@@ -1,22 +1,74 @@
-<form id="formulario">
-  <input type="text" name="categoria" placeholder="Categoria" required>
-  <input type="number" name="valor" placeholder="Valor estimado (R$)" required>
-  <button type="submit">Adicionar Gasto</button>
-</form>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Gastos do Casamento</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <h1>Gastos do Casamento</h1>
 
-<script>
-  document.getElementById("formulario").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const categoria = e.target.categoria.value;
-    const valor = e.target.valor.value;
+  <form id="formulario">
+    <select name="categoria" required>
+      <option value="">Selecione uma categoria</option>
+      <option value="Buffet">Buffet</option>
+      <option value="Decoração">Decoração</option>
+      <option value="Fotografia">Fotografia</option>
+      <option value="DJ / Música">DJ / Música</option>
+      <option value="Convites">Convites</option>
+    </select>
+    <input type="number" name="valor" placeholder="Novo valor estimado (R$)" required>
+    <button type="submit">Atualizar Despesa</button>
+  </form>
 
-    await fetch("/api/adicionar", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ categoria, valor })
+  <h2>Distribuição Atual</h2>
+  <canvas id="grafico" width="400" height="400"></canvas>
+
+  <script>
+    const SHEETDB_URL = "https://sheetdb.io/api/v1/opi6fgc16nx4q";
+
+    // CARREGAR GRÁFICO
+    async function carregarGrafico() {
+      const res = await fetch(SHEETDB_URL);
+      const dados = await res.json();
+
+      const categorias = dados.map(item => item.Categoria);
+      const valores = dados.map(item => Number(item.Valor_Estimado_R));
+
+      const ctx = document.getElementById("grafico").getContext("2d");
+      if (window.meuGrafico) window.meuGrafico.destroy();
+
+      window.meuGrafico = new Chart(ctx, {
+        type: "pie",
+        data: {
+          labels: categorias,
+          datasets: [{
+            label: "Gastos (R$)",
+            data: valores
+          }]
+        }
+      });
+    }
+
+    // ENVIO DO FORMULÁRIO
+    document.getElementById("formulario").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const categoria = e.target.categoria.value;
+      const valor = e.target.valor.value;
+
+      // Atualiza o valor usando PUT com filtro por categoria
+      await fetch(`${SHEETDB_URL}/Categoria/${categoria}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data: { Valor_Estimado_R: valor } })
+      });
+
+      e.target.reset();
+      await carregarGrafico();
     });
 
-    e.target.reset();
-    location.reload();
-  });
-</script>
+    // Mostrar o gráfico ao carregar
+    carregarGrafico();
+  </script>
+</body>
+</html>
