@@ -48,7 +48,6 @@
         }
       });
 
-      // Mostrar total
       const total = valores.reduce((acc, val) => acc + val, 0);
       document.getElementById("total").innerText = `Total estimado: R$ ${total.toFixed(2)}`;
 
@@ -72,7 +71,8 @@
       const categoria = e.target.categoria.value;
       const valor = e.target.valor.value;
 
-      const url = `${SHEETDB_URL}/search?Categoria=${encodeURIComponent(categoria)}`;
+      // CORREÇÃO AQUI:
+      const url = `${SHEETDB_URL}/Categoria/${encodeURIComponent(categoria)}`;
       await fetch(url, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
