@@ -1,0 +1,22 @@
+<form id="formulario">
+  <input type="text" name="categoria" placeholder="Categoria" required>
+  <input type="number" name="valor" placeholder="Valor estimado (R$)" required>
+  <button type="submit">Adicionar Gasto</button>
+</form>
+
+<script>
+  document.getElementById("formulario").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const categoria = e.target.categoria.value;
+    const valor = e.target.valor.value;
+
+    await fetch("/api/adicionar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ categoria, valor })
+    });
+
+    e.target.reset();
+    location.reload();
+  });
+</script>
