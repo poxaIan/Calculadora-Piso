@@ -2,11 +2,11 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Gastos do Casamento</title>
+  <title>Despesas de casamento</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <h1>Gastos do Casamento</h1>
+  <h1>Despesas de casamento</h1>
 
   <form id="formulario">
     <select name="categoria" required>
@@ -17,23 +17,40 @@
       <option value="DJ / Música">DJ / Música</option>
       <option value="Convites">Convites</option>
     </select>
-    <input type="number" name="valor" placeholder="Novo valor estimado (R$)" required>
+    <input type="number" name="valor" placeholder="Novo valor estimado" required>
     <button type="submit">Atualizar Despesa</button>
   </form>
 
-  <h2>Distribuição Atual</h2>
+  <h2>Distribuição atual</h2>
+  <p id="total"></p>
   <canvas id="grafico" width="400" height="400"></canvas>
 
   <script>
     const SHEETDB_URL = "https://sheetdb.io/api/v1/opi6fgc16nx4q";
 
-    // CARREGAR GRÁFICO
     async function carregarGrafico() {
       const res = await fetch(SHEETDB_URL);
       const dados = await res.json();
 
-      const categorias = dados.map(item => item.Categoria);
-      const valores = dados.map(item => Number(item.Valor_Estimado_R));
+      const categorias = [];
+      const valores = [];
+
+      dados.forEach(item => {
+        const categoria = item.Categoria;
+        const valor = Number(item.Valor_Estimado_R);
+        if (
+          categoria &&
+          categoria.toLowerCase() !== 'totais:' &&
+          !isNaN(valor)
+        ) {
+          categorias.push(categoria);
+          valores.push(valor);
+        }
+      });
+
+      // Mostrar total
+      const total = valores.reduce((acc, val) => acc + val, 0);
+      document.getElementById("total").innerText = `Total estimado: R$ ${total.toFixed(2)}`;
 
       const ctx = document.getElementById("grafico").getContext("2d");
       if (window.meuGrafico) window.meuGrafico.destroy();
@@ -50,14 +67,13 @@
       });
     }
 
-    // ENVIO DO FORMULÁRIO
     document.getElementById("formulario").addEventListener("submit", async (e) => {
       e.preventDefault();
       const categoria = e.target.categoria.value;
       const valor = e.target.valor.value;
 
-      // Atualiza o valor usando PUT com filtro por categoria
-      await fetch(`${SHEETDB_URL}/Categoria/${categoria}`, {
+      const url = `${SHEETDB_URL}/search?Categoria=${encodeURIComponent(categoria)}`;
+      await fetch(url, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ data: { Valor_Estimado_R: valor } })
@@ -67,7 +83,6 @@
       await carregarGrafico();
     });
 
-    // Mostrar o gráfico ao carregar
     carregarGrafico();
   </script>
 </body>
