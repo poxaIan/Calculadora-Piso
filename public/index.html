@@ -29,41 +29,46 @@
     const SHEETDB_URL = "https://sheetdb.io/api/v1/opi6fgc16nx4q";
 
     async function carregarGrafico() {
-      const res = await fetch(SHEETDB_URL);
-      const dados = await res.json();
+      console.log("🔄 Carregando gráfico...");
 
-      const categorias = [];
-      const valores = [];
+      try {
+        const res = await fetch(SHEETDB_URL);
+        const dados = await res.json();
+        console.log("📊 Dados recebidos do SheetDB:", dados);
 
-      dados.forEach(item => {
-        const categoria = item.Categoria;
-        const valor = Number(item.Valor_Estimado_R);
-        if (
-          categoria &&
-          categoria.toLowerCase() !== 'totais:' &&
-          !isNaN(valor)
-        ) {
-          categorias.push(categoria);
-          valores.push(valor);
-        }
-      });
+        const categorias = [];
+        const valores = [];
 
-      const total = valores.reduce((acc, val) => acc + val, 0);
-      document.getElementById("total").innerText = `Total estimado: R$ ${total.toFixed(2)}`;
+        dados.forEach(item => {
+          const categoria = item.Categoria;
+          const valor = Number(item.Valor_Estimado_R);
+          if (categoria && !isNaN(valor)) {
+            categorias.push(categoria);
+            valores.push(valor);
+          }
+        });
 
-      const ctx = document.getElementById("grafico").getContext("2d");
-      if (window.meuGrafico) window.meuGrafico.destroy();
+        const total = valores.reduce((acc, val) => acc + val, 0);
+        document.getElementById("total").innerText = `Total estimado: R$ ${total.toFixed(2)}`;
+        console.log("✅ Categorias:", categorias);
+        console.log("✅ Valores:", valores);
 
-      window.meuGrafico = new Chart(ctx, {
-        type: "pie",
-        data: {
-          labels: categorias,
-          datasets: [{
-            label: "Gastos (R$)",
-            data: valores
-          }]
-        }
-      });
+        const ctx = document.getElementById("grafico").getContext("2d");
+        if (window.meuGrafico) window.meuGrafico.destroy();
+
+        window.meuGrafico = new Chart(ctx, {
+          type: "pie",
+          data: {
+            labels: categorias,
+            datasets: [{
+              label: "Gastos (R$)",
+              data: valores
+            }]
+          }
+        });
+      } catch (err) {
+        console.error("❌ Erro ao carregar dados do gráfico:", err);
+      }
     }
 
     document.getElementById("formulario").addEventListener("submit", async (e) => {
@@ -71,16 +76,24 @@
       const categoria = e.target.categoria.value;
       const valor = e.target.valor.value;
 
-      // CORREÇÃO AQUI:
-      const url = `${SHEETDB_URL}/Categoria/${encodeURIComponent(categoria)}`;
-      await fetch(url, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data: { Valor_Estimado_R: valor } })
-      });
+      console.log(`📤 Enviando PUT para atualizar categoria "${categoria}" com valor R$ ${valor}`);
 
-      e.target.reset();
-      await carregarGrafico();
+      const url = `${SHEETDB_URL}/Categoria/${encodeURIComponent(categoria)}`;
+      try {
+        const resposta = await fetch(url, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ data: { Valor_Estimado_R: valor } })
+        });
+
+        const retorno = await resposta.json();
+        console.log("✅ Resposta do PUT:", retorno);
+
+        e.target.reset();
+        await carregarGrafico();
+      } catch (err) {
+        console.error("❌ Erro ao enviar PUT:", err);
+      }
     });
 
     carregarGrafico();
