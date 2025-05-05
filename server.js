@@ -36,25 +36,25 @@ app.post('/api/calcular', async (req, res) => {
 
     // 🔍 Leitura da planilha
     const workbook = xlsx.readFile('Planilha_Calculo_Piso.xlsm');
-    console.log("📚 Abas disponíveis:", workbook.SheetNames);
+    const sheetNames = workbook.SheetNames;
+    console.log("📚 Abas disponíveis:", sheetNames);
 
-    const sheet = workbook.Sheets[workbook.SheetNames[1]];
-    const dados = xlsx.utils.sheet_to_json(sheet);
+    // Garantir que está pegando a aba certa
+    const sheet = workbook.Sheets["Tabela de Insumos"];
+    const dados = xlsx.utils.sheet_to_json(sheet, { defval: "", raw: true });
 
-    console.log(`📄 Primeira linha da planilha:`, dados[0]);
-    const todasChaves = dados.map(i => i.Chave?.toString().trim());
-    console.log("🔑 Primeiras chaves disponíveis:", todasChaves.slice(0, 10));
+    console.log("📄 Primeira linha lida:", dados[0]); // Mostra os cabeçalhos
+    console.log("🔑 Primeiras chaves disponíveis:", dados.slice(0, 5).map(i => i.Chave));
 
-    // 🧩 Buscar chave
-    const chave = `${codigoFamilia}-${codigoInsumo}`.trim();
+    const chave = `${codigoFamilia}-${codigoInsumo}`;
     console.log(`🔍 Buscando pela chave: '${chave}'`);
-
     const info = dados.find(i => i.Chave?.toString().trim() === chave);
 
     if (!info) {
       console.log(`❌ Chave '${chave}' não encontrada na planilha`);
       return res.status(404).json({ erro: "Insumo não encontrado" });
     }
+
 
     // 🧮 Cálculos
     const area = comprimento * largura;
