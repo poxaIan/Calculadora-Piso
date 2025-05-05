@@ -11,52 +11,67 @@ app.use(express.json());
 const upload = multer();
 
 // NOVA ROTA PARA PROCESSAR CÁLCULO E BUSCA DE INSUMO
-app.post('/api/calcular', upload.none(), (req, res) => {
-  const dados = req.body;
-  const filePath = path.join(__dirname, 'Planilha_Calculo_Piso.xlsm');
+app.post('/api/calcular', async (req, res) => {
+  try {
+    console.log("📥 Dados recebidos do formulário:", req.body);
 
-  if (!fs.existsSync(filePath)) {
-    return res.status(500).json({ error: 'Planilha não encontrada.' });
+    const {
+      codigoFamilia,
+      codigoInsumo,
+      ambiente,
+      pavimento,
+      comprimento,
+      largura,
+      alturaRodape,
+      valorUnitario
+    } = req.body;
+
+    console.log("🧮 Iniciando cálculos com:");
+    console.log(`Código da Família: ${codigoFamilia}`);
+    console.log(`Código do Insumo: ${codigoInsumo}`);
+    console.log(`Comprimento: ${comprimento}`);
+    console.log(`Largura: ${largura}`);
+    console.log(`Altura Rodapé: ${alturaRodape}`);
+    console.log(`Valor Unitário: ${valorUnitario}`);
+
+    // Se estiver lendo planilha:
+    const workbook = xlsx.readFile('Planilha_Calculo_Piso.xlsm');
+    const sheet = workbook.Sheets[workbook.SheetNames[1]];
+    const dados = xlsx.utils.sheet_to_json(sheet);
+
+    const chave = `${codigoFamilia}-${codigoInsumo}`;
+    const info = dados.find(i => i.Chave?.toString() === chave);
+
+    if (!info) {
+      console.log(`❌ Chave '${chave}' não encontrada na planilha`);
+      return res.status(404).json({ erro: "Insumo não encontrado" });
+    }
+
+    // Calcula tudo:
+    const area = comprimento * largura;
+    const perimetro = 2 * (comprimento + largura);
+    const areaRodape = perimetro * alturaRodape;
+    const areaComPerda = area * 1.1;
+    const valorTotal = areaComPerda * valorUnitario;
+
+    console.log("✅ Cálculos realizados com sucesso.");
+
+    res.json({
+      area,
+      perimetro,
+      areaRodape,
+      areaComPerda,
+      valorTotal,
+      descricao: info["Descrição do Insumo"],
+      unidade: info["Unidade"],
+      categoria: info["Categoria"]
+    });
+  } catch (err) {
+    console.error("❌ Erro no cálculo:", err);
+    res.status(500).json({ erro: "Erro ao processar cálculo." });
   }
-
-  // Carrega a planilha de insumos
-  const wb = XLSX.readFile(filePath);
-  const ws = wb.Sheets[wb.SheetNames[0]];
-  const insumos = XLSX.utils.sheet_to_json(ws);
-
-  // Busca insumo correspondente
-  const chave = `${dados.codigoFamilia}-${dados.codigoInsumo}`;
-  const linha = insumos.find(row => `${row['Código da Família']}-${row['Código do Insumo']}` === chave);
-
-  if (!linha) {
-    return res.status(404).json({ error: 'Insumo não encontrado na planilha.' });
-  }
-
-  // Cálculos
-  const comprimento = parseFloat(dados.comprimento);
-  const largura = parseFloat(dados.largura);
-  const altura = parseFloat(dados.altura);
-  const valorUnitario = parseFloat(dados.valorUnitario);
-
-  const area = comprimento * largura;
-  const perimetro = 2 * (comprimento + largura);
-  const areaRodape = perimetro * altura;
-  const areaComPerda = area * 1.1;
-  const valorTotal = areaComPerda * valorUnitario;
-
-  const resultado = {
-    area: area.toFixed(2),
-    perimetro: perimetro.toFixed(2),
-    areaRodape: areaRodape.toFixed(2),
-    areaComPerda: areaComPerda.toFixed(2),
-    valorTotal: valorTotal.toFixed(2),
-    descricao: linha['Descrição do Insumo'],
-    unidade: linha['Unidade'],
-    categoria: linha['Categoria']
-  };
-
-  res.json(resultado);
 });
+
 
 const PORT = 3000;
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
