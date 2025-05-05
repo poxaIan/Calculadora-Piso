@@ -2,103 +2,115 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Despesas de casamento</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <title>Cálculo de Piso</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 30px;
+      background: #f2f2f2;
+      color: #333;
+    }
+    form {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      max-width: 600px;
+      margin: auto;
+    }
+    form input {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    form button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      width: 100%;
+    }
+    form button:hover {
+      background-color: #45a049;
+    }
+    .resultado {
+      background: #fff;
+      margin-top: 20px;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      max-width: 600px;
+      margin: 20px auto;
+    }
+    .resultado h2 {
+      margin-top: 0;
+    }
+    .resultado p {
+      margin: 5px 0;
+    }
+  </style>
 </head>
 <body>
-  <h1>Despesas de casamento</h1>
-
+  <h1 style="text-align: center;">Cálculo de Piso</h1>
   <form id="formulario">
-    <select name="categoria" required>
-      <option value="">Selecione uma categoria</option>
-      <option value="Buffet">Buffet</option>
-      <option value="Decoração">Decoração</option>
-      <option value="Fotografia">Fotografia</option>
-      <option value="DJ / Música">DJ / Música</option>
-      <option value="Convites">Convites</option>
-    </select>
-    <input type="number" name="valor" placeholder="Novo valor estimado" required>
-    <button type="submit">Atualizar Despesa</button>
+    <input type="text" name="codigoFamilia" placeholder="Código da Família" required>
+    <input type="text" name="codigoInsumo" placeholder="Código do Insumo" required>
+    <input type="text" name="ambiente" placeholder="Ambiente" required>
+    <input type="text" name="pavimento" placeholder="Pavimento" required>
+    <input type="number" name="comprimento" placeholder="Comprimento (m)" step="0.01" required>
+    <input type="number" name="largura" placeholder="Largura (m)" step="0.01" required>
+    <input type="number" name="altura" placeholder="Altura Rodapé (m)" step="0.01" required>
+    <input type="number" name="valorUnitario" placeholder="Valor Unitário (R$/m² ou m)" step="0.01" required>
+    <button type="submit">Calcular</button>
   </form>
 
-  <h2>Distribuição atual</h2>
-  <p id="total"></p>
-  <div style="max-width: 350px; margin: auto;">
-    <canvas id="grafico"></canvas>
+  <div class="resultado" id="resultado" style="display:none">
+    <h2>Resultado</h2>
+    <p><strong>Área (m²):</strong> <span id="area"></span></p>
+    <p><strong>Perímetro (m):</strong> <span id="perimetro"></span></p>
+    <p><strong>Área Rodapé (m²):</strong> <span id="areaRodape"></span></p>
+    <p><strong>Área com Perda (m²):</strong> <span id="areaComPerda"></span></p>
+    <p><strong>Valor Total (R$):</strong> <span id="valorTotal"></span></p>
+    <hr>
+    <p><strong>Descrição do Insumo:</strong> <span id="descricao"></span></p>
+    <p><strong>Unidade:</strong> <span id="unidade"></span></p>
+    <p><strong>Categoria:</strong> <span id="categoria"></span></p>
   </div>
 
-  <script>              
-    const SHEETDB_URL = "https://sheetdb.io/api/v1/opi6fgc16nx4q";
-
-    async function carregarGrafico() {
-      console.log("🔄 Carregando gráfico...");
-
-      try {
-        const res = await fetch(SHEETDB_URL);
-        const dados = await res.json();
-        console.log("📊 Dados recebidos do SheetDB:", dados);
-
-        const categorias = [];
-        const valores = [];
-
-        dados.forEach(item => {
-          const categoria = item.Categoria;
-          const valor = Number(item.Valor_Estimado_R);
-          if (categoria && !isNaN(valor)) {
-            categorias.push(categoria);
-            valores.push(valor);
-          }
-        });
-
-        const total = valores.reduce((acc, val) => acc + val, 0);
-        document.getElementById("total").innerText = `Total estimado: R$ ${total.toFixed(2)}`;
-        console.log("✅ Categorias:", categorias);
-        console.log("✅ Valores:", valores);
-
-        const ctx = document.getElementById("grafico").getContext("2d");
-        if (window.meuGrafico) window.meuGrafico.destroy();
-
-        window.meuGrafico = new Chart(ctx, {
-          type: "pie",
-          data: {
-            labels: categorias,
-            datasets: [{
-              label: "Gastos (R$)",
-              data: valores
-            }]
-          }
-        });
-      } catch (err) {
-        console.error("❌ Erro ao carregar dados do gráfico:", err);
-      }
-    }
-
-    document.getElementById("formulario").addEventListener("submit", async (e) => {
+  <script>
+    const form = document.getElementById("formulario");
+    form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const categoria = e.target.categoria.value;
-      const valor = e.target.valor.value;
-
-      console.log(`📤 Enviando PUT para atualizar categoria "${categoria}" com valor R$ ${valor}`);
-
-      const url = `${SHEETDB_URL}/Categoria/${encodeURIComponent(categoria)}`;
+      const dados = Object.fromEntries(new FormData(form).entries());
       try {
-        const resposta = await fetch(url, {
-          method: "PUT",
+        const res = await fetch("/api/calcular", {
+          method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ data: { Valor_Estimado_R: valor } })
+          body: JSON.stringify(dados)
         });
 
-        const retorno = await resposta.json();
-        console.log("✅ Resposta do PUT:", retorno);
+        if (!res.ok) throw new Error("Erro ao calcular.");
+        const resultado = await res.json();
 
-        e.target.reset();
-        await carregarGrafico();
+        document.getElementById("area").innerText = resultado.area;
+        document.getElementById("perimetro").innerText = resultado.perimetro;
+        document.getElementById("areaRodape").innerText = resultado.areaRodape;
+        document.getElementById("areaComPerda").innerText = resultado.areaComPerda;
+        document.getElementById("valorTotal").innerText = resultado.valorTotal;
+        document.getElementById("descricao").innerText = resultado.descricao;
+        document.getElementById("unidade").innerText = resultado.unidade;
+        document.getElementById("categoria").innerText = resultado.categoria;
+
+        document.getElementById("resultado").style.display = "block";
       } catch (err) {
-        console.error("❌ Erro ao enviar PUT:", err);
+        alert("Erro ao processar cálculo. Verifique os dados.");
       }
     });
-
-    carregarGrafico();
   </script>
 </body>
 </html>
