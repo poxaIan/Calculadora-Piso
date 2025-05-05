@@ -1,4 +1,6 @@
 // server.js
+const xlsx = require('xlsx');
+
 const express = require('express');
 const path = require('path');
 const multer = require('multer');
@@ -22,9 +24,11 @@ app.post('/api/calcular', async (req, res) => {
       pavimento,
       comprimento,
       largura,
-      alturaRodape,
+      altura,
       valorUnitario
     } = req.body;
+    
+    const alturaRodape = altura; 
 
     console.log("🧮 Iniciando cálculos com:");
     console.log(`Código da Família: ${codigoFamilia}`);
